@@ -31,6 +31,8 @@ android {
         buildConfigField("String", "HUGGING_FACE_TOKEN", "\"${localProperties["HUGGING_FACE_TOKEN"]}\"")
 
         buildConfigField("String", "REPLICATE_API_KEY", "\"${localProperties["REPLICATE_API_KEY"]}\"")
+
+        buildConfigField("String", "REMOVE_BG_API_KEY", "\"${localProperties["REMOVE_BG_API_KEY"]}\"")
     }
 
     buildTypes {
@@ -67,6 +69,7 @@ dependencies {
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -19,6 +19,9 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +36,9 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
     var generatedBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     val imageGenService = remember { ImageGenerationService() }
     val geminiApi = remember { GeminiApiService() }
+    var processedBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var waitingForTouch by remember { mutableStateOf(false) }
+    var imageSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
 
     val tempFile = remember {
         File.createTempFile("outfit_", ".jpg", context.cacheDir)
@@ -99,15 +105,70 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
 
             // Affichage photo ou image générée
             if (photoUri != null) {
-                if (generatedBitmap != null) {
+                if (generatedBitmap != null ) {
                     androidx.compose.foundation.Image(
                         bitmap = generatedBitmap!!.asImageBitmap(),
-                        contentDescription = "Vêtement généré",
+                        contentDescription = "Vêtement isolé",
                         modifier = Modifier
                             .fillMaxWidth()
                             .wrapContentHeight(),
                         contentScale = ContentScale.Fit
                     )
+                } else if (waitingForTouch) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight()
+                    ) {
+                        AsyncImage(
+                            model = photoUri,
+                            contentDescription = "Photo du vêtement",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentHeight()
+                                .onGloballyPositioned { coordinates ->
+                                    imageSize = androidx.compose.ui.geometry.Size(
+                                        coordinates.size.width.toFloat(),
+                                        coordinates.size.height.toFloat()
+                                    )
+                                }
+                                .pointerInput(Unit) {
+                                    detectTapGestures { offset ->
+                                        android.util.Log.d("TOUCH", "Touch at: ${offset.x}, ${offset.y}")
+                                        android.util.Log.d("TOUCH", "Image size: ${imageSize.width}x${imageSize.height}")
+                                        waitingForTouch = false
+                                        scope.launch {
+                                            val sourceBitmap = BitmapUtils.loadCorrectlyOrientedBitmap(context, photoUri!!)
+                                                ?: return@launch
+                                            generatedBitmap = imageGenService.isolateGarment(
+                                                context,
+                                                photoUri!!,
+                                                offset.x,
+                                                offset.y,
+                                                imageSize.width,
+                                                imageSize.height
+                                            )
+                                        }
+                                    }
+                                },
+                            contentScale = ContentScale.Fit
+                        )
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter)
+                                .padding(8.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Text(
+                                text = "👆 Touche le vêtement sur la photo",
+                                modifier = Modifier.padding(8.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
                 } else {
                     AsyncImage(
                         model = photoUri,
@@ -117,6 +178,15 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                             .wrapContentHeight(),
                         contentScale = ContentScale.Fit
                     )
+                }
+
+                if (generatedBitmap == null && !waitingForTouch) {
+                    Button(
+                        onClick = { waitingForTouch = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("✂️ Sélectionner le vêtement")
+                    }
                 }
 
                 // Bouton ajouter au dressing
@@ -213,7 +283,6 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                     }
                 }
             }
-
             // Suggestions d'outfits
             outfitSuggestion?.let { suggestion ->
                 Card(
