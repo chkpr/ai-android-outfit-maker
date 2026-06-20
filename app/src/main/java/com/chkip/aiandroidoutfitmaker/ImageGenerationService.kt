@@ -12,6 +12,8 @@ import io.ktor.client.call.*
 import io.ktor.client.engine.android.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -53,7 +55,12 @@ class ImageGenerationService {
 
         android.util.Log.d("SAM", "Point: $pointX, $pointY in bitmap ${bitmap.width}x${bitmap.height}")
 
-        val base64Image = "data:image/jpeg;base64," + Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+        // Réduit l'image avant envoi
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 1024, (1024 * bitmap.height / bitmap.width), true)
+        val outputStream = java.io.ByteArrayOutputStream()
+        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+        val compressedBytes = outputStream.toByteArray()
+        val base64Image = "data:image/jpeg;base64," + Base64.encodeToString(compressedBytes, Base64.NO_WRAP)
 
         val requestBody = JsonObject(mapOf(
             "version" to JsonPrimitive("b28e02c3844df2c44dcb2cb96ba2496435681bf88878e3bd0ab6b401a971d79e"),
@@ -133,7 +140,78 @@ class ImageGenerationService {
     }
 
     // Garde la méthode existante pour la compatibilité
-    suspend fun generateCleanImage(context: Context, imageUri: Uri, clothingDescription: String): Bitmap? {
-        return isolateGarment(context, imageUri, 0f, 0f, 1f, 1f)
+    suspend fun generateCleanImage(context: Context, imageUri: Uri, prompt: String): Bitmap? {
+        val imageBytes = context.contentResolver.openInputStream(imageUri)?.readBytes()
+            ?: return null
+
+        return try {
+            // Remove.bg retire le fond
+            val responseBytes: ByteArray = client.post("https://api.remove.bg/v1.0/removebg") {
+                header("X-Api-Key", BuildConfig.REMOVE_BG_API_KEY)
+                setBody(
+                    MultiPartFormDataContent(
+                    formData {
+                        append("image_file", imageBytes, Headers.build {
+                            append(HttpHeaders.ContentType, "image/jpeg")
+                            append(HttpHeaders.ContentDisposition, "filename=image.jpg")
+                        })
+                        append("size", "auto")
+                    }
+                ))
+            }.body()
+
+            val jsonString = responseBytes.toString(Charsets.UTF_8)
+            val jsonResponse = Json.parseToJsonElement(jsonString).jsonObject
+            val base64Result = jsonResponse["data"]?.jsonObject?.get("result_b64")?.jsonPrimitive?.content
+                ?: return null
+
+            val imageBytes2 = Base64.decode(base64Result, Base64.DEFAULT)
+            val tempFile = java.io.File(context.cacheDir, "removebg_result.png")
+            tempFile.writeBytes(imageBytes2)
+
+            // Décode l'image sans fond
+            val transparentBitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val source = android.graphics.ImageDecoder.createSource(tempFile)
+                android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                    decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+                }
+            } else {
+                BitmapFactory.decodeFile(tempFile.absolutePath)
+            } ?: return null
+
+            // Extrait la couleur principale du prompt
+            val isLight = prompt.contains("white") || prompt.contains("beige") ||
+                    prompt.contains("cream") || prompt.contains("light")
+
+            // Filtre les pixels non-vêtement
+            val width = transparentBitmap.width
+            val height = transparentBitmap.height
+            val pixels = IntArray(width * height)
+            transparentBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+            val resultPixels = IntArray(width * height)
+            for (i in pixels.indices) {
+                val alpha = Color.alpha(pixels[i])
+                val r = Color.red(pixels[i])
+                val g = Color.green(pixels[i])
+                val b = Color.blue(pixels[i])
+
+                resultPixels[i] = if (alpha > 30) {
+                    Color.rgb(r, g, b) // Garde tous les pixels non transparents
+                } else {
+                    Color.WHITE
+                }
+            }
+
+            val resultBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            resultBitmap.setPixels(resultPixels, 0, width, 0, 0, width, height)
+
+            android.util.Log.d("ImageGen", "Success! ${width}x${height}")
+            resultBitmap
+
+        } catch (e: Exception) {
+            android.util.Log.e("ImageGen", "Error: ${e.message}")
+            null
+        }
     }
 }

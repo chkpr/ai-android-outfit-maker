@@ -70,17 +70,26 @@ class GeminiApiService {
                             )
                         ),
                         GeminiPart(
-                            text = """Tu es un expert en mode et stylisme.
-                                    Analyse ce vêtement et réponds EXACTEMENT dans ce format :
+                            text = """Tu es un expert en mode et stylisme et en traitement d'image.
+                                Analyse ce vêtement et réponds EXACTEMENT dans ce format :
 
-                                    DESCRIPTION: [description courte du vêtement en anglais, ex: "white cotton t-shirt with round neck"]
+                                DESCRIPTION: [description courte du vêtement en anglais, ex: "white cotton t-shirt with round neck"]
         
-                                     OUTFITS:
-                                        1. [premier outfit suggéré]
-                                        2. [deuxième outfit suggéré]  
-                                        3. [troisième outfit suggéré]
+                                COULEUR_PRINCIPALE: [couleur principale du tissu en anglais, ex: "white"]
         
-                                    Réponds en français pour les outfits, en anglais uniquement pour la DESCRIPTION."""
+                                COULEURS_SECONDAIRES: [liste des autres couleurs visibles sur le vêtement séparées par des virgules, ex: "red, blue" ou "none" si pas de motif]
+        
+                                TYPE: [type de vêtement en anglais, ex: "t-shirt", "dress", "jacket"]
+        
+                                A_MOTIF: [true ou false selon si le vêtement a un motif, logo ou impression]
+
+                                OUTFITS:
+                                1. [premier outfit suggéré]
+                                2. [deuxième outfit suggéré]  
+                                3. [troisième outfit suggéré]
+        
+                                Réponds en français pour les outfits, en anglais pour le reste."""
+
                         )
                     )
                 )

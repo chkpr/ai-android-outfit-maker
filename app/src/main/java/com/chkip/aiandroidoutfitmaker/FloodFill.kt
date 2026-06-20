@@ -20,10 +20,12 @@ object FloodFill {
         val startX = (touchX * scaleX).toInt().coerceIn(0, bitmap.width - 1)
         val startY = (touchY * scaleY).toInt().coerceIn(0, bitmap.height - 1)
 
-        android.util.Log.d("FLOODFILL", "Bitmap: ${bitmap.width}x${bitmap.height}, Touch: $startX, $startY")
-
         // Copie le bitmap en ARGB
         val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+
+// Calcule la tolérance automatiquement
+        val autoTolerance = calculateTolerance(mutableBitmap, startX, startY)
+        android.util.Log.d("FLOODFILL", "Bitmap: ${bitmap.width}x${bitmap.height}, Touch: $startX, $startY, Auto tolerance: $autoTolerance")
         val width = mutableBitmap.width
         val height = mutableBitmap.height
 
@@ -56,7 +58,7 @@ object FloodFill {
                 if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
                 val nIdx = ny * width + nx
                 if (selected[nIdx]) continue
-                if (colorSimilar(pixels[nIdx], targetColor, tolerance)) {
+                if (colorSimilar(pixels[nIdx], targetColor, autoTolerance)) {
                     selected[nIdx] = true
                     queue.add(nIdx)
                 }
@@ -72,6 +74,25 @@ object FloodFill {
         val resultBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         resultBitmap.setPixels(result, 0, width, 0, 0, width, height)
         return resultBitmap
+    }
+
+    fun calculateTolerance(bitmap: Bitmap, touchX: Int, touchY: Int): Int {
+        val pixel = bitmap.getPixel(touchX, touchY)
+        val r = Color.red(pixel)
+        val g = Color.green(pixel)
+        val b = Color.blue(pixel)
+
+        // Luminosité du pixel touché (0-255)
+        val luminosity = (0.299 * r + 0.587 * g + 0.114 * b).toInt()
+
+        android.util.Log.d("FLOODFILL", "Luminosity: $luminosity")
+
+        return when {
+            luminosity < 80 -> 60   // Très sombre (noir) → tolérance plus haute
+            luminosity < 150 -> 40  // Couleurs moyennes
+            luminosity > 200 -> 50  // Très clair (blanc) → tolérance haute
+            else -> 45              // Standard
+        }
     }
 
     private fun colorSimilar(c1: Int, c2: Int, tolerance: Int): Boolean {

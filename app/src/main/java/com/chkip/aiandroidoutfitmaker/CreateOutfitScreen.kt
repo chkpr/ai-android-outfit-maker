@@ -22,6 +22,10 @@ import java.util.UUID
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import android.graphics.Bitmap
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -138,11 +142,33 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                                         android.util.Log.d("TOUCH", "Image size: ${imageSize.width}x${imageSize.height}")
                                         waitingForTouch = false
                                         scope.launch {
-                                            val sourceBitmap = BitmapUtils.loadCorrectlyOrientedBitmap(context, photoUri!!)
-                                                ?: return@launch
-                                            generatedBitmap = imageGenService.isolateGarment(
-                                                context,
-                                                photoUri!!,
+                                            val sourceBitmap =
+                                                BitmapUtils.loadCorrectlyOrientedBitmap(
+                                                    context,
+                                                    photoUri!!
+                                                )
+                                                    ?: return@launch
+
+                                            // Réduit l'image pour le Flood Fill
+                                            val maxSize = 800
+                                            val scale = minOf(
+                                                maxSize.toFloat() / sourceBitmap.width,
+                                                maxSize.toFloat() / sourceBitmap.height
+                                            )
+                                            val scaledBitmap = Bitmap.createScaledBitmap(
+                                                sourceBitmap,
+                                                (sourceBitmap.width * scale).toInt(),
+                                                (sourceBitmap.height * scale).toInt(),
+                                                true
+                                            )
+
+                                            android.util.Log.d(
+                                                "FLOODFILL",
+                                                "Scaled bitmap: ${scaledBitmap.width}x${scaledBitmap.height}"
+                                            )
+
+                                            generatedBitmap = FloodFill.isolateGarment(
+                                                scaledBitmap,
                                                 offset.x,
                                                 offset.y,
                                                 imageSize.width,
@@ -258,12 +284,45 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                                 ?.removePrefix("DESCRIPTION:")
                                 ?.trim()
 
-                            android.util.Log.d("OUTFIT", "Description extraite: $description")
+                            val mainColor = outfitSuggestion
+                                ?.lines()
+                                ?.find { it.startsWith("COULEUR_PRINCIPALE:") }
+                                ?.removePrefix("COULEUR_PRINCIPALE:")
+                                ?.trim()
 
-                            if (description != null) {
-                                generatedBitmap = imageGenService.generateCleanImage(
-                                    context, photoUri!!, description
+                            val secondaryColors = outfitSuggestion
+                                ?.lines()
+                                ?.find { it.startsWith("COULEURS_SECONDAIRES:") }
+                                ?.removePrefix("COULEURS_SECONDAIRES:")
+                                ?.trim()
+                                ?.split(",")
+                                ?.map { it.trim() }
+                                ?: emptyList()
+
+                            val hasPattern = outfitSuggestion
+                                ?.lines()
+                                ?.find { it.startsWith("A_MOTIF:") }
+                                ?.removePrefix("A_MOTIF:")
+                                ?.trim() == "true"
+
+                            android.util.Log.d("OUTFIT", "Couleur principale: $mainColor, Motif: $hasPattern, Couleurs: $secondaryColors")
+
+
+
+                            if (description != null && generatedBitmap != null) {
+                                // Sauvegarde le bitmap du flood fill en fichier temporaire
+                                val tempFile = java.io.File(context.cacheDir, "floodfill_result.jpg")
+                                val outStream = java.io.FileOutputStream(tempFile)
+                                generatedBitmap!!.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outStream)
+                                outStream.close()
+                                val tempUri = androidx.core.content.FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    tempFile
                                 )
+
+                                val ecommercePrompt = "Professional e-commerce product photo of $description, flat lay on pure white background, perfectly smooth, studio lighting, high quality"
+                                generatedBitmap = imageGenService.generateCleanImage(context, tempUri, ecommercePrompt)
                             }
                             isLoading = false
                         }
