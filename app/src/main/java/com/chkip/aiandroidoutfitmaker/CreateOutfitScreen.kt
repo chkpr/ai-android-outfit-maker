@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -17,6 +18,7 @@ import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +28,11 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var outfitSuggestion by remember { mutableStateOf<String?>(null) }
+    val wardrobeStorage = remember { WardrobeStorage(context) }
+    var savedToDressing by remember { mutableStateOf(false) }
+    var generatedBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    val imageGenService = remember { ImageGenerationService() }
+    val geminiApi = remember { GeminiApiService() }
 
     val tempFile = remember {
         File.createTempFile("outfit_", ".jpg", context.cacheDir)
@@ -44,6 +51,7 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
         if (success) {
             photoUri = fileUri
             outfitSuggestion = null
+            generatedBitmap = null
         }
     }
 
@@ -59,10 +67,9 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
         uri?.let {
             photoUri = it
             outfitSuggestion = null
+            generatedBitmap = null
         }
     }
-
-    val geminiApi = remember { GeminiApiService() }
 
     Scaffold(
         topBar = {
@@ -90,15 +97,51 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.headlineSmall
             )
 
+            // Affichage photo ou image générée
             if (photoUri != null) {
-                AsyncImage(
-                    model = photoUri,
-                    contentDescription = "Photo du vêtement",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight(),
-                    contentScale = ContentScale.Crop
-                )
+                if (generatedBitmap != null) {
+                    androidx.compose.foundation.Image(
+                        bitmap = generatedBitmap!!.asImageBitmap(),
+                        contentDescription = "Vêtement généré",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight(),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    AsyncImage(
+                        model = photoUri,
+                        contentDescription = "Photo du vêtement",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+
+                // Bouton ajouter au dressing
+                if (savedToDressing) {
+                    Text(
+                        text = "✅ Ajouté au dressing !",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                } else {
+                    OutlinedButton(
+                        onClick = {
+                            val item = ClothingItem(
+                                id = UUID.randomUUID().toString(),
+                                photoPath = photoUri.toString(),
+                                description = outfitSuggestion ?: "Vêtement sans description"
+                            )
+                            wardrobeStorage.saveItem(item)
+                            savedToDressing = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("👗 Ajouter au dressing")
+                    }
+                }
             } else {
                 Surface(
                     modifier = Modifier
@@ -113,6 +156,7 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                 }
             }
 
+            // Boutons caméra et galerie
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { permissionLauncher.launch(android.Manifest.permission.CAMERA) },
@@ -128,12 +172,29 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                 }
             }
 
+            // Bouton générer
             if (photoUri != null) {
                 Button(
                     onClick = {
                         scope.launch {
+                            android.util.Log.d("OUTFIT", "Bouton cliqué !")
                             isLoading = true
                             outfitSuggestion = geminiApi.generateOutfit(context, photoUri!!)
+                            android.util.Log.d("OUTFIT", "Suggestion complète: $outfitSuggestion")
+
+                            val description = outfitSuggestion
+                                ?.lines()
+                                ?.find { it.startsWith("DESCRIPTION:") }
+                                ?.removePrefix("DESCRIPTION:")
+                                ?.trim()
+
+                            android.util.Log.d("OUTFIT", "Description extraite: $description")
+
+                            if (description != null) {
+                                generatedBitmap = imageGenService.generateCleanImage(
+                                    context, photoUri!!, description
+                                )
+                            }
                             isLoading = false
                         }
                     },
@@ -153,6 +214,7 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                 }
             }
 
+            // Suggestions d'outfits
             outfitSuggestion?.let { suggestion ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),

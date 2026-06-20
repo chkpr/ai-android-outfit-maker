@@ -15,11 +15,17 @@ fun AppNavigation() {
     ) {
         composable("home") {
             HomeScreen(
-                onCreateOutfit = { navController.navigate("create_outfit") }
+                onCreateOutfit = { navController.navigate("create_outfit") },
+                onOpenWardrobe = { navController.navigate("wardrobe") }
             )
         }
         composable("create_outfit") {
             CreateOutfitScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable("wardrobe") {
+            WardrobeScreen(
                 onBack = { navController.popBackStack() }
             )
         }

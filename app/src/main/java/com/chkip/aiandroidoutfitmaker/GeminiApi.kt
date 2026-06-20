@@ -71,12 +71,16 @@ class GeminiApiService {
                         ),
                         GeminiPart(
                             text = """Tu es un expert en mode et stylisme.
-                                Analyse ce vêtement et propose 3 suggestions d'outfits complets.
-                                Pour chaque outfit, décris :
-                                - Les autres vêtements à associer
-                                - Les couleurs recommandées
-                                - L'occasion appropriée (casual, soirée, bureau...)
-                                Réponds en français de façon concise et inspirante."""
+                                    Analyse ce vêtement et réponds EXACTEMENT dans ce format :
+
+                                    DESCRIPTION: [description courte du vêtement en anglais, ex: "white cotton t-shirt with round neck"]
+        
+                                     OUTFITS:
+                                        1. [premier outfit suggéré]
+                                        2. [deuxième outfit suggéré]  
+                                        3. [troisième outfit suggéré]
+        
+                                    Réponds en français pour les outfits, en anglais uniquement pour la DESCRIPTION."""
                         )
                     )
                 )

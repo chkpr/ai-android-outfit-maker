@@ -27,6 +27,10 @@ android {
         val localProperties = Properties()
         localProperties.load(FileInputStream(rootProject.file("local.properties")))
         buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties["GEMINI_API_KEY"]}\"")
+
+        buildConfigField("String", "HUGGING_FACE_TOKEN", "\"${localProperties["HUGGING_FACE_TOKEN"]}\"")
+
+        buildConfigField("String", "REPLICATE_API_KEY", "\"${localProperties["REPLICATE_API_KEY"]}\"")
     }
 
     buildTypes {

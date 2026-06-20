@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HomeScreen(
     onCreateOutfit: () -> Unit,
+    onOpenWardrobe: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -48,7 +49,11 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(32.dp))
             Button(onClick = onCreateOutfit) {
-                Text("Créer un outfit")
+                Text("✨ Créer un outfit")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(onClick = onOpenWardrobe) {
+                Text("👗 Mon dressing")
             }
         }
     }
