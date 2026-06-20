@@ -216,11 +216,24 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                 } else {
                     OutlinedButton(
                         onClick = {
-                            val item = ClothingItem(
-                                id = UUID.randomUUID().toString(),
-                                photoPath = photoUri.toString(),
-                                description = outfitSuggestion ?: "Vêtement sans description"
-                            )
+                            val item = if (generatedBitmap != null) {
+                                // Sauvegarde l'image détourée
+                                val file = java.io.File(context.filesDir, "wardrobe_${UUID.randomUUID()}.jpg")
+                                val outStream = java.io.FileOutputStream(file)
+                                generatedBitmap!!.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outStream)
+                                outStream.close()
+                                ClothingItem(
+                                    id = UUID.randomUUID().toString(),
+                                    photoPath = file.absolutePath,
+                                    description = outfitSuggestion ?: "Vêtement sans description"
+                                )
+                            } else {
+                                ClothingItem(
+                                    id = UUID.randomUUID().toString(),
+                                    photoPath = photoUri.toString(),
+                                    description = outfitSuggestion ?: "Vêtement sans description"
+                                )
+                            }
                             wardrobeStorage.saveItem(item)
                             savedToDressing = true
                         },

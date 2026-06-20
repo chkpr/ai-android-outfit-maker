@@ -77,7 +77,14 @@ object GrabCutSegmentation {
         Core.compare(mask, Scalar(Imgproc.GC_PR_FGD.toDouble()), probFgMask, Core.CMP_EQ)
         Core.add(fgMask, probFgMask, fgMask)
 
-        // Applique le masque
+
+
+        // Lisse les bords du masque
+        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
+        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_CLOSE, kernel)
+        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_DILATE, kernel)
+
+// Applique le masque lissé
         val srcRgba = Mat()
         Utils.bitmapToMat(bitmap, srcRgba)
         val white = Mat(srcRgba.size(), srcRgba.type(), Scalar(255.0, 255.0, 255.0, 255.0))

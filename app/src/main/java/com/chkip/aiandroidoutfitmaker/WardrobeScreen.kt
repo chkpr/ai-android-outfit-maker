@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +58,10 @@ fun WardrobeScreen(onBack: () -> Unit) {
             ) {
                 items(items) { item ->
                     Card(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        )
                     ) {
                         Column {
                             AsyncImage(
@@ -66,7 +70,7 @@ fun WardrobeScreen(onBack: () -> Unit) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(150.dp),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Fit
                             )
                             TextButton(
                                 onClick = {
