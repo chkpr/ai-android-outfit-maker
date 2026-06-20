@@ -43,6 +43,8 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
     var processedBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var waitingForTouch by remember { mutableStateOf(false) }
     var imageSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
+    var lastTouchY by remember { mutableStateOf(0f) }
+    var lastTouchX by remember { mutableStateOf(0f) }
 
     val tempFile = remember {
         File.createTempFile("outfit_", ".jpg", context.cacheDir)
@@ -141,20 +143,14 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                                         android.util.Log.d("TOUCH", "Touch at: ${offset.x}, ${offset.y}")
                                         android.util.Log.d("TOUCH", "Image size: ${imageSize.width}x${imageSize.height}")
                                         waitingForTouch = false
+                                        lastTouchX = offset.x
+                                        lastTouchY = offset.y
                                         scope.launch {
-                                            val sourceBitmap =
-                                                BitmapUtils.loadCorrectlyOrientedBitmap(
-                                                    context,
-                                                    photoUri!!
-                                                )
-                                                    ?: return@launch
+                                            val sourceBitmap = BitmapUtils.loadCorrectlyOrientedBitmap(context, photoUri!!)
+                                                ?: return@launch
 
-                                            // Réduit l'image pour le Flood Fill
                                             val maxSize = 800
-                                            val scale = minOf(
-                                                maxSize.toFloat() / sourceBitmap.width,
-                                                maxSize.toFloat() / sourceBitmap.height
-                                            )
+                                            val scale = minOf(maxSize.toFloat() / sourceBitmap.width, maxSize.toFloat() / sourceBitmap.height)
                                             val scaledBitmap = Bitmap.createScaledBitmap(
                                                 sourceBitmap,
                                                 (sourceBitmap.width * scale).toInt(),
@@ -162,12 +158,7 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                                                 true
                                             )
 
-                                            android.util.Log.d(
-                                                "FLOODFILL",
-                                                "Scaled bitmap: ${scaledBitmap.width}x${scaledBitmap.height}"
-                                            )
-
-                                            generatedBitmap = FloodFill.isolateGarment(
+                                            generatedBitmap = GrabCutSegmentation.isolateGarment(
                                                 scaledBitmap,
                                                 offset.x,
                                                 offset.y,
@@ -308,21 +299,13 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                             android.util.Log.d("OUTFIT", "Couleur principale: $mainColor, Motif: $hasPattern, Couleurs: $secondaryColors")
 
 
-
-                            if (description != null && generatedBitmap != null) {
-                                // Sauvegarde le bitmap du flood fill en fichier temporaire
-                                val tempFile = java.io.File(context.cacheDir, "floodfill_result.jpg")
-                                val outStream = java.io.FileOutputStream(tempFile)
-                                generatedBitmap!!.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outStream)
-                                outStream.close()
-                                val tempUri = androidx.core.content.FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.fileprovider",
-                                    tempFile
+                            if (description != null) {
+                                val isolatedBitmap = imageGenService.generateCleanImage(
+                                    context, photoUri!!, description,
+                                    lastTouchX, lastTouchY,
+                                    imageSize.width, imageSize.height
                                 )
-
-                                val ecommercePrompt = "Professional e-commerce product photo of $description, flat lay on pure white background, perfectly smooth, studio lighting, high quality"
-                                generatedBitmap = imageGenService.generateCleanImage(context, tempUri, ecommercePrompt)
+                                if (isolatedBitmap != null) generatedBitmap = isolatedBitmap
                             }
                             isLoading = false
                         }

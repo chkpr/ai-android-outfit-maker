@@ -11,49 +11,55 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.chkip.aiandroidoutfitmaker.ui.theme.AIAndroidOutfitMakerTheme
+import org.opencv.android.OpenCVLoader
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Initialise OpenCV
+        OpenCVLoader.initLocal()
+        android.util.Log.d("OpenCV", "OpenCV initialized")
+
         setContent {
             AIAndroidOutfitMakerTheme {
                 AppNavigation()
             }
         }
     }
-}
 
-@Composable
-fun HomeScreen(
-    onCreateOutfit: () -> Unit,
-    onOpenWardrobe: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "👗 Outfit Maker",
-                style = MaterialTheme.typography.headlineLarge
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Crée tes outfits avec l'IA",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            Button(onClick = onCreateOutfit) {
-                Text("✨ Créer un outfit")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(onClick = onOpenWardrobe) {
-                Text("👗 Mon dressing")
+    @Composable
+    fun HomeScreen(
+        onCreateOutfit: () -> Unit,
+        onOpenWardrobe: () -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "👗 Outfit Maker",
+                    style = MaterialTheme.typography.headlineLarge
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Crée tes outfits avec l'IA",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(onClick = onCreateOutfit) {
+                    Text("✨ Créer un outfit")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(onClick = onOpenWardrobe) {
+                    Text("👗 Mon dressing")
+                }
             }
         }
     }
