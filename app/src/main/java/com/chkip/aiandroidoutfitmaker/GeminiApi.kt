@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import android.util.Base64
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.engine.android.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
