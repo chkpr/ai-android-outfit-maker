@@ -3,8 +3,9 @@ package com.chkip.aiandroidoutfitmaker
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,16 +14,19 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import coil3.compose.rememberAsyncImagePainter
+import coil3.compose.AsyncImage
+import kotlinx.coroutines.launch
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateOutfitScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    var outfitSuggestion by remember { mutableStateOf<String?>(null) }
 
-    // Crée un fichier temporaire pour la photo
     val tempFile = remember {
         File.createTempFile("outfit_", ".jpg", context.cacheDir)
     }
@@ -34,26 +38,31 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
         )
     }
 
-    // Launcher pour la caméra
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) photoUri = fileUri
+        if (success) {
+            photoUri = fileUri
+            outfitSuggestion = null
+        }
     }
 
-    // Launcher pour la permission caméra
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) cameraLauncher.launch(fileUri)
     }
 
-    // Launcher pour la galerie
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let { photoUri = it }
+        uri?.let {
+            photoUri = it
+            outfitSuggestion = null
+        }
     }
+
+    val geminiApi = remember { GeminiApiService() }
 
     Scaffold(
         topBar = {
@@ -71,7 +80,8 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -80,18 +90,16 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.headlineSmall
             )
 
-            // Affiche la photo si prise
             if (photoUri != null) {
-                Image(
-                    painter = rememberAsyncImagePainter(photoUri),
+                AsyncImage(
+                    model = photoUri,
                     contentDescription = "Photo du vêtement",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp),
+                        .wrapContentHeight(),
                     contentScale = ContentScale.Crop
                 )
             } else {
-                // Placeholder
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -105,9 +113,7 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                 }
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { permissionLauncher.launch(android.Manifest.permission.CAMERA) },
                     modifier = Modifier.weight(1f)
@@ -124,10 +130,41 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
 
             if (photoUri != null) {
                 Button(
-                    onClick = { /* TODO: appel API Claude */ },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = {
+                        scope.launch {
+                            isLoading = true
+                            outfitSuggestion = geminiApi.generateOutfit(context, photoUri!!)
+                            isLoading = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
                 ) {
-                    Text("✨ Générer un outfit avec l'IA")
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Analyse en cours...")
+                    } else {
+                        Text("✨ Générer un outfit avec l'IA")
+                    }
+                }
+            }
+
+            outfitSuggestion?.let { suggestion ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Text(
+                        text = suggestion,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }
