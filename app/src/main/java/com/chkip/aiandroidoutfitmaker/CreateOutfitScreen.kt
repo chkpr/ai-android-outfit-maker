@@ -24,12 +24,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import android.graphics.Bitmap
 
-
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
+fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var photoUri by remember { mutableStateOf<Uri?>(null) }
@@ -48,10 +45,28 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
     var selectedStyle by remember { mutableStateOf("Casual chic") }
     val styles = listOf(
         "Classique", "Casual chic", "Sophistiqué", "Fashion", "Rock", "Streetwear",
-        "Décalé", "Bohème", "Bureau", "Soirée",
-        "Y2K", "Années 90", "Seventies",
+        "Décalé", "Bohème", "Bureau", "Soirée", "Y2K", "Années 90", "Seventies"
     )
-    var expanded by remember { mutableStateOf(false) }
+    var styleExpanded by remember { mutableStateOf(false) }
+    var showCategoryDialog by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf("Autres") }
+
+    val categories = listOf(
+        "Tops", "Jeans", "Pantalons", "Pulls", "Gilets",
+        "Vestes", "Manteaux", "Jupes", "Robes",
+        "Ceintures", "Chapeaux & Casquettes", "Foulards & Écharpes", "Autres"
+    )
+
+    LaunchedEffect(outfitSuggestion) {
+        val type = outfitSuggestion
+            ?.lines()
+            ?.find { it.startsWith("TYPE:") }
+            ?.removePrefix("TYPE:")
+            ?.trim() ?: ""
+        if (type.isNotEmpty()) {
+            selectedCategory = mapTypeToCategory(type)
+        }
+    }
 
     val tempFile = remember {
         File.createTempFile("outfit_", ".jpg", context.cacheDir)
@@ -90,6 +105,91 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
         }
     }
 
+    // Modale de catégorie
+    if (showCategoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showCategoryDialog = false },
+            title = { Text("Choisir une catégorie") },
+            text = {
+                Column {
+                    if (generatedBitmap != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = generatedBitmap!!.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    var catExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = catExpanded,
+                        onExpandedChange = { catExpanded = !catExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedCategory,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Catégorie") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = catExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = catExpanded,
+                            onDismissRequest = { catExpanded = false }
+                        ) {
+                            categories.forEach { cat ->
+                                DropdownMenuItem(
+                                    text = { Text(cat) },
+                                    onClick = {
+                                        selectedCategory = cat
+                                        catExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val item = if (generatedBitmap != null) {
+                        val file = java.io.File(context.filesDir, "wardrobe_${UUID.randomUUID()}.jpg")
+                        val outStream = java.io.FileOutputStream(file)
+                        generatedBitmap!!.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outStream)
+                        outStream.close()
+                        ClothingItem(
+                            id = UUID.randomUUID().toString(),
+                            photoPath = file.absolutePath,
+                            description = outfitSuggestion ?: "Vêtement sans description",
+                            category = selectedCategory
+                        )
+                    } else {
+                        ClothingItem(
+                            id = UUID.randomUUID().toString(),
+                            photoPath = photoUri.toString(),
+                            description = outfitSuggestion ?: "Vêtement sans description",
+                            category = selectedCategory
+                        )
+                    }
+                    wardrobeStorage.saveItem(item)
+                    savedToDressing = true
+                    showCategoryDialog = false
+                }) {
+                    Text("Ajouter")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCategoryDialog = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -121,23 +221,16 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                 style = MaterialTheme.typography.headlineSmall
             )
 
-            // Affichage photo ou image générée
             if (photoUri != null) {
-                if (generatedBitmap != null ) {
+                if (generatedBitmap != null) {
                     androidx.compose.foundation.Image(
                         bitmap = generatedBitmap!!.asImageBitmap(),
                         contentDescription = "Vêtement isolé",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight(),
+                        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                         contentScale = ContentScale.Fit
                     )
                 } else if (waitingForTouch) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight()
-                    ) {
+                    Box(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
                         AsyncImage(
                             model = photoUri,
                             contentDescription = "Photo du vêtement",
@@ -152,15 +245,12 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                                 }
                                 .pointerInput(Unit) {
                                     detectTapGestures { offset ->
-                                        android.util.Log.d("TOUCH", "Touch at: ${offset.x}, ${offset.y}")
-                                        android.util.Log.d("TOUCH", "Image size: ${imageSize.width}x${imageSize.height}")
                                         waitingForTouch = false
                                         lastTouchX = offset.x
                                         lastTouchY = offset.y
                                         scope.launch {
                                             val sourceBitmap = BitmapUtils.loadCorrectlyOrientedBitmap(context, photoUri!!)
                                                 ?: return@launch
-
                                             val maxSize = 800
                                             val scale = minOf(maxSize.toFloat() / sourceBitmap.width, maxSize.toFloat() / sourceBitmap.height)
                                             val scaledBitmap = Bitmap.createScaledBitmap(
@@ -169,7 +259,6 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                                                 (sourceBitmap.height * scale).toInt(),
                                                 true
                                             )
-
                                             generatedBitmap = GrabCutSegmentation.isolateGarment(
                                                 scaledBitmap,
                                                 offset.x,
@@ -183,10 +272,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                             contentScale = ContentScale.Fit
                         )
                         Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .align(Alignment.TopCenter)
-                                .padding(8.dp),
+                            modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(8.dp),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                             shape = MaterialTheme.shapes.medium
                         ) {
@@ -202,9 +288,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                     AsyncImage(
                         model = photoUri,
                         contentDescription = "Photo du vêtement",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight(),
+                        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                         contentScale = ContentScale.Fit
                     )
                 }
@@ -218,7 +302,6 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                     }
                 }
 
-                // Bouton ajouter au dressing
                 if (savedToDressing) {
                     Text(
                         text = "✅ Ajouté au dressing !",
@@ -227,28 +310,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                     )
                 } else {
                     OutlinedButton(
-                        onClick = {
-                            val item = if (generatedBitmap != null) {
-                                // Sauvegarde l'image détourée
-                                val file = java.io.File(context.filesDir, "wardrobe_${UUID.randomUUID()}.jpg")
-                                val outStream = java.io.FileOutputStream(file)
-                                generatedBitmap!!.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outStream)
-                                outStream.close()
-                                ClothingItem(
-                                    id = UUID.randomUUID().toString(),
-                                    photoPath = file.absolutePath,
-                                    description = outfitSuggestion ?: "Vêtement sans description"
-                                )
-                            } else {
-                                ClothingItem(
-                                    id = UUID.randomUUID().toString(),
-                                    photoPath = photoUri.toString(),
-                                    description = outfitSuggestion ?: "Vêtement sans description"
-                                )
-                            }
-                            wardrobeStorage.saveItem(item)
-                            savedToDressing = true
-                        },
+                        onClick = { showCategoryDialog = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("👗 Ajouter au dressing")
@@ -256,9 +318,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                 }
             } else {
                 Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp),
+                    modifier = Modifier.fillMaxWidth().height(300.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = MaterialTheme.shapes.medium
                 ) {
@@ -268,7 +328,6 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                 }
             }
 
-            // Boutons caméra et galerie
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { permissionLauncher.launch(android.Manifest.permission.CAMERA) },
@@ -285,44 +344,39 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
             }
 
             ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
+                expanded = styleExpanded,
+                onExpandedChange = { styleExpanded = !styleExpanded }
             ) {
                 OutlinedTextField(
                     value = selectedStyle,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Style") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = styleExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
                 ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    expanded = styleExpanded,
+                    onDismissRequest = { styleExpanded = false }
                 ) {
                     styles.forEach { style ->
                         DropdownMenuItem(
                             text = { Text(style) },
                             onClick = {
                                 selectedStyle = style
-                                expanded = false
+                                styleExpanded = false
                             }
                         )
                     }
                 }
             }
 
-            // Bouton générer
             if (photoUri != null) {
                 Button(
                     onClick = {
                         scope.launch {
-                            android.util.Log.d("OUTFIT", "Bouton cliqué !")
                             isLoading = true
                             outfitSuggestion = geminiApi.generateOutfit(context, photoUri!!, selectedStyle)
-                            android.util.Log.d("OUTFIT", "Suggestion complète: $outfitSuggestion")
 
                             val description = outfitSuggestion
                                 ?.lines()
@@ -351,9 +405,6 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                                 ?.removePrefix("A_MOTIF:")
                                 ?.trim() == "true"
 
-                            android.util.Log.d("OUTFIT", "Couleur principale: $mainColor, Motif: $hasPattern, Couleurs: $secondaryColors")
-
-
                             if (description != null) {
                                 val isolatedBitmap = imageGenService.generateCleanImage(
                                     context, photoUri!!, description,
@@ -380,7 +431,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
                     }
                 }
             }
-            // Suggestions d'outfits
+
             outfitSuggestion?.let { suggestion ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
