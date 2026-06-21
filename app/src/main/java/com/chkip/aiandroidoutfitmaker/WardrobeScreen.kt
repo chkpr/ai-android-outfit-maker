@@ -20,7 +20,7 @@ import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WardrobeScreen(onBack: () -> Unit) {
+fun WardrobeScreen(onBack: () -> Unit, onCreateOutfit: (String) -> Unit = {}) {
     val context = LocalContext.current
     val wardrobeStorage = remember { WardrobeStorage(context) }
     var selectedItem by remember { mutableStateOf<ClothingItem?>(null) }
@@ -98,15 +98,29 @@ fun WardrobeScreen(onBack: () -> Unit) {
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    selectedItem?.let { item ->
-                        wardrobeStorage.deleteItem(item.id)
-                        wardrobeStorage.saveItem(item.copy(category = selectedCategory))
-                        items = wardrobeStorage.getItems()
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            onCreateOutfit(selectedItem!!.photoPath)
+                            showItemDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("✨ Générer un outfit")
                     }
-                    showItemDialog = false
-                }) {
-                    Text("Confirmer")
+                    Button(
+                        onClick = {
+                            selectedItem?.let { item ->
+                                wardrobeStorage.deleteItem(item.id)
+                                wardrobeStorage.saveItem(item.copy(category = selectedCategory))
+                                items = wardrobeStorage.getItems()
+                            }
+                            showItemDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Confirmer la catégorie")
+                    }
                 }
             },
             dismissButton = {

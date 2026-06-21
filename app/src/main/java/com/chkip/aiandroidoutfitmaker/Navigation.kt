@@ -19,15 +19,20 @@ fun AppNavigation() {
                 onOpenWardrobe = { navController.navigate("wardrobe") }
             )
         }
-        composable("create_outfit") {
+        composable("create_outfit?itemPath={itemPath}") { backStackEntry ->
+            val itemPath = backStackEntry.arguments?.getString("itemPath")
             CreateOutfitScreen(
                 onBack = { navController.popBackStack() },
-                onOpenWardrobe = { navController.navigate("wardrobe")}
+                onOpenWardrobe = { navController.navigate("wardrobe") },
+                preloadedImagePath = itemPath
             )
         }
         composable("wardrobe") {
             WardrobeScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onCreateOutfit = { itemPath ->
+                    navController.navigate("create_outfit?itemPath=${itemPath}")
+                }
             )
         }
     }

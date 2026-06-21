@@ -26,7 +26,7 @@ import android.graphics.Bitmap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit) {
+fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit, preloadedImagePath: String? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var photoUri by remember { mutableStateOf<Uri?>(null) }
@@ -43,6 +43,16 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit) {
     var lastTouchY by remember { mutableStateOf(0f) }
     var lastTouchX by remember { mutableStateOf(0f) }
     var selectedStyle by remember { mutableStateOf("Casual chic") }
+
+    LaunchedEffect(preloadedImagePath) {
+        preloadedImagePath?.let { path ->
+            val file = java.io.File(path)
+            if (file.exists()) {
+                photoUri = android.net.Uri.fromFile(file)
+            }
+        }
+    }
+
     val styles = listOf(
         "Classique", "Casual chic", "Sophistiqué", "Fashion", "Rock", "Streetwear",
         "Décalé", "Bohème", "Bureau", "Soirée", "Y2K", "Années 90", "Seventies"
@@ -293,7 +303,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit) {
                     )
                 }
 
-                if (generatedBitmap == null && !waitingForTouch) {
+                if (generatedBitmap == null && !waitingForTouch && preloadedImagePath == null) {
                     Button(
                         onClick = { waitingForTouch = true },
                         modifier = Modifier.fillMaxWidth()
@@ -302,18 +312,20 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit) {
                     }
                 }
 
-                if (savedToDressing) {
-                    Text(
-                        text = "✅ Ajouté au dressing !",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                } else {
-                    OutlinedButton(
-                        onClick = { showCategoryDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("👗 Ajouter au dressing")
+                if (preloadedImagePath == null) {
+                    if (savedToDressing) {
+                        Text(
+                            text = "✅ Ajouté au dressing !",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    } else {
+                        OutlinedButton(
+                            onClick = { showCategoryDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("👗 Ajouter au dressing")
+                        }
                     }
                 }
             } else {
@@ -328,18 +340,20 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit) {
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { permissionLauncher.launch(android.Manifest.permission.CAMERA) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("📷 Caméra")
-                }
-                OutlinedButton(
-                    onClick = { galleryLauncher.launch("image/*") },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("🖼️ Galerie")
+            if (preloadedImagePath == null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { permissionLauncher.launch(android.Manifest.permission.CAMERA) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("📷 Caméra")
+                    }
+                    OutlinedButton(
+                        onClick = { galleryLauncher.launch("image/*") },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("🖼️ Galerie")
+                    }
                 }
             }
 
@@ -405,7 +419,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit) {
                                 ?.removePrefix("A_MOTIF:")
                                 ?.trim() == "true"
 
-                            if (description != null) {
+                            if (description != null && preloadedImagePath == null) {
                                 val isolatedBitmap = imageGenService.generateCleanImage(
                                     context, photoUri!!, description,
                                     lastTouchX, lastTouchY,
