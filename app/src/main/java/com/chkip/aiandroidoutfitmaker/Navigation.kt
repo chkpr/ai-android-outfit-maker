@@ -21,7 +21,8 @@ fun AppNavigation() {
         }
         composable("create_outfit") {
             CreateOutfitScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onOpenWardrobe = { navController.navigate("wardrobe")}
             )
         }
         composable("wardrobe") {

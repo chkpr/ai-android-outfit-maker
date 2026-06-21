@@ -29,7 +29,7 @@ import android.graphics.Bitmap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateOutfitScreen(onBack: () -> Unit) {
+fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe:() -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var photoUri by remember { mutableStateOf<Uri?>(null) }
@@ -97,6 +97,11 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                 navigationIcon = {
                     TextButton(onClick = onBack) {
                         Text("← Retour")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = onOpenWardrobe) {
+                        Text("👗 Dressing")
                     }
                 }
             )
