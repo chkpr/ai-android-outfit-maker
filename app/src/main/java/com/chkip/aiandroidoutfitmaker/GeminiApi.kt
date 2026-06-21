@@ -1,5 +1,6 @@
 package com.chkip.aiandroidoutfitmaker
 
+import android.R
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
@@ -54,7 +55,7 @@ class GeminiApiService {
         }
     }
 
-    suspend fun generateOutfit(context: Context, imageUri: Uri): String {
+    suspend fun generateOutfit(context: Context, imageUri: Uri, style:String = "Classique"): String {
         val imageBytes = context.contentResolver.openInputStream(imageUri)?.readBytes()
             ?: return "Erreur : impossible de lire l'image"
         val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
@@ -70,26 +71,22 @@ class GeminiApiService {
                             )
                         ),
                         GeminiPart(
-                            text = """Tu es un expert en mode et stylisme et en traitement d'image.
+                            text = """Tu es un styliste de mode créatif et audacieux, expert en tendances actuelles.
                                 Analyse ce vêtement et réponds EXACTEMENT dans ce format :
 
-                                DESCRIPTION: [description courte du vêtement en anglais, ex: "white cotton t-shirt with round neck"]
-        
-                                COULEUR_PRINCIPALE: [couleur principale du tissu en anglais, ex: "white"]
-        
-                                COULEURS_SECONDAIRES: [liste des autres couleurs visibles sur le vêtement séparées par des virgules, ex: "red, blue" ou "none" si pas de motif]
-        
-                                TYPE: [type de vêtement en anglais, ex: "t-shirt", "dress", "jacket"]
-        
-                                A_MOTIF: [true ou false selon si le vêtement a un motif, logo ou impression]
+                                DESCRIPTION: [description courte du vêtement en anglais]
+                                COULEUR_PRINCIPALE: [couleur principale en anglais]
+                                COULEURS_SECONDAIRES: [autres couleurs en anglais, séparées par des virgules, ou "none"]
+                                TYPE: [type de vêtement en anglais]
+                                A_MOTIF: [true ou false]
 
                                 OUTFITS:
-                                1. [premier outfit suggéré]
-                                2. [deuxième outfit suggéré]  
-                                3. [troisième outfit suggéré]
+                                1. [outfit dans le style $style - sois créatif, précis et inspirant. Cite des pièces spécifiques, des matières, des couleurs exactes]
+                                2. [deuxième outfit ${style} - propose quelque chose d'inattendu et original]
+                                3. [troisième outfit $style - ose une combinaison surprenante mais cohérente]
         
+                                Pour chaque outfit, mentionne : les pièces du bas, les chaussures, les accessoires clés.
                                 Réponds en français pour les outfits, en anglais pour le reste."""
-
                         )
                     )
                 )

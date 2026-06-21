@@ -45,6 +45,13 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
     var imageSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
     var lastTouchY by remember { mutableStateOf(0f) }
     var lastTouchX by remember { mutableStateOf(0f) }
+    var selectedStyle by remember { mutableStateOf("Casual chic") }
+    val styles = listOf(
+        "Classique", "Casual chic", "Sophistiqué", "Fashion", "Rock", "Streetwear",
+        "Décalé", "Bohème", "Bureau", "Soirée",
+        "Y2K", "Années 90", "Seventies",
+    )
+    var expanded by remember { mutableStateOf(false) }
 
     val tempFile = remember {
         File.createTempFile("outfit_", ".jpg", context.cacheDir)
@@ -272,6 +279,36 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                 }
             }
 
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    value = selectedStyle,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Style") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    styles.forEach { style ->
+                        DropdownMenuItem(
+                            text = { Text(style) },
+                            onClick = {
+                                selectedStyle = style
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
             // Bouton générer
             if (photoUri != null) {
                 Button(
@@ -279,7 +316,7 @@ fun CreateOutfitScreen(onBack: () -> Unit) {
                         scope.launch {
                             android.util.Log.d("OUTFIT", "Bouton cliqué !")
                             isLoading = true
-                            outfitSuggestion = geminiApi.generateOutfit(context, photoUri!!)
+                            outfitSuggestion = geminiApi.generateOutfit(context, photoUri!!, selectedStyle)
                             android.util.Log.d("OUTFIT", "Suggestion complète: $outfitSuggestion")
 
                             val description = outfitSuggestion
