@@ -447,17 +447,91 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit, preloaded
             }
 
             outfitSuggestion?.let { suggestion ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
-                ) {
-                    Text(
-                        text = suggestion,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                val outfitStorage = remember { OutfitStorage(context) }
+
+                val outfitLines = suggestion.lines()
+                val outfits = mutableListOf<Pair<String, String>>()
+                var currentTitle = ""
+                var currentDesc = StringBuilder()
+
+                outfitLines.forEach { line ->
+                    when {
+                        line.startsWith("1.") -> {
+                            currentTitle = "Outfit 1"
+                            currentDesc = StringBuilder(line.removePrefix("1.").trim())
+                        }
+                        line.startsWith("2.") -> {
+                            if (currentTitle.isNotEmpty()) outfits.add(Pair(currentTitle, currentDesc.toString()))
+                            currentTitle = "Outfit 2"
+                            currentDesc = StringBuilder(line.removePrefix("2.").trim())
+                        }
+                        line.startsWith("3.") -> {
+                            if (currentTitle.isNotEmpty()) outfits.add(Pair(currentTitle, currentDesc.toString()))
+                            currentTitle = "Outfit 3"
+                            currentDesc = StringBuilder(line.removePrefix("3.").trim())
+                        }
+                        line.isNotBlank() && currentTitle.isNotEmpty() &&
+                                !line.startsWith("DESCRIPTION:") && !line.startsWith("COULEUR") &&
+                                !line.startsWith("TYPE") && !line.startsWith("A_MOTIF") &&
+                                !line.startsWith("OUTFITS") -> {
+                            currentDesc.append(" ").append(line.trim())
+                        }
+                    }
+                }
+                if (currentTitle.isNotEmpty()) outfits.add(Pair(currentTitle, currentDesc.toString()))
+
+                val outfitEmojis = listOf("✨", "🌟", "💫")
+
+                outfits.forEachIndexed { index, (title, desc) ->
+                    var saved by remember { mutableStateOf(false) }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "${outfitEmojis.getOrElse(index) { "👗" }} $title",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = desc,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            if (saved) {
+                                Text(
+                                    text = "✅ Sauvegardé !",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            } else {
+                                OutlinedButton(
+                                    onClick = {
+                                        outfitStorage.saveOutfit(
+                                            SavedOutfit(
+                                                id = java.util.UUID.randomUUID().toString(),
+                                                title = title,
+                                                description = desc,
+                                                garmentDescription = suggestion
+                                                    .lines()
+                                                    .find { it.startsWith("DESCRIPTION:") }
+                                                    ?.removePrefix("DESCRIPTION:")
+                                                    ?.trim() ?: ""
+                                            )
+                                        )
+                                        saved = true
+                                    },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text("🔖 Garder cet outfit")
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -16,7 +16,8 @@ fun AppNavigation() {
         composable("home") {
             HomeScreen(
                 onCreateOutfit = { navController.navigate("create_outfit") },
-                onOpenWardrobe = { navController.navigate("wardrobe") }
+                onOpenWardrobe = { navController.navigate("wardrobe") },
+                onOpenSavedOutfits = { navController.navigate("saved_outfits") }
             )
         }
         composable("create_outfit?itemPath={itemPath}") { backStackEntry ->
@@ -33,6 +34,12 @@ fun AppNavigation() {
                 onCreateOutfit = { itemPath ->
                     navController.navigate("create_outfit?itemPath=${itemPath}")
                 }
+            )
+        }
+
+        composable("saved_outfits") {
+            SavedOutfitsScreen(
+                onBack = { navController.popBackStack() }
             )
         }
     }

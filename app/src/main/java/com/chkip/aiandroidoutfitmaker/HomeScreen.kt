@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 fun HomeScreen(
     onCreateOutfit: () -> Unit,
     onOpenWardrobe: () -> Unit,
+    onOpenSavedOutfits: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -37,6 +38,10 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedButton(onClick = onOpenWardrobe) {
                 Text("👗 Mon dressing")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(onClick = onOpenSavedOutfits) {
+                Text("🔖 Mes outfits")
             }
         }
     }
