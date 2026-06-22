@@ -390,7 +390,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit, preloaded
                     onClick = {
                         scope.launch {
                             isLoading = true
-                            outfitSuggestion = geminiApi.generateOutfit(context, photoUri!!, selectedStyle)
+                            outfitSuggestion = geminiApi.generateOutfit(context, photoUri!!, selectedStyle, wardrobeStorage.getItems())
 
                             val description = outfitSuggestion
                                 ?.lines()
