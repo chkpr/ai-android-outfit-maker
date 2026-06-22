@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 
 @Composable
 fun AppNavigation() {
@@ -17,7 +18,7 @@ fun AppNavigation() {
             HomeScreen(
                 onCreateOutfit = { navController.navigate("create_outfit") },
                 onOpenWardrobe = { navController.navigate("wardrobe") },
-                onOpenSavedOutfits = { navController.navigate("saved_outfits") }
+                onOpenSavedOutfits = { navController.navigate("saved_outfits?garmentDesc=") }
             )
         }
         composable("create_outfit?itemPath={itemPath}") { backStackEntry ->
@@ -33,13 +34,24 @@ fun AppNavigation() {
                 onBack = { navController.popBackStack() },
                 onCreateOutfit = { itemPath ->
                     navController.navigate("create_outfit?itemPath=${itemPath}")
+                },
+                onOpenSavedOutfits = { garmentDesc ->
+                    navController.navigate("saved_outfits?garmentDesc=${garmentDesc ?: ""}")
                 }
             )
         }
-
-        composable("saved_outfits") {
+        composable(
+            "saved_outfits?garmentDesc={garmentDesc}",
+            arguments = listOf(navArgument("garmentDesc") {
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val garmentDesc = backStackEntry.arguments?.getString("garmentDesc")
             SavedOutfitsScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onCreateOutfit = { navController.navigate("create_outfit") },
+                garmentDescription = garmentDesc
             )
         }
     }

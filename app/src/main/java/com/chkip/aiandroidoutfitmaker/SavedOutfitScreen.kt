@@ -13,15 +13,46 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SavedOutfitsScreen(onBack: () -> Unit) {
+fun SavedOutfitsScreen(
+    onBack: () -> Unit,
+    onCreateOutfit: () -> Unit = {},
+    garmentDescription: String? = null
+) {
     val context = LocalContext.current
     val outfitStorage = remember { OutfitStorage(context) }
-    var outfits by remember { mutableStateOf(outfitStorage.getOutfits()) }
+    var outfits by remember {
+        mutableStateOf(
+            if (garmentDescription != null) {
+                if (garmentDescription.isEmpty()) {
+                    emptyList() // description vide = aucun outfit
+                } else {
+                    val keywords = garmentDescription.split(" ")
+                        .filter { it.length > 4 }
+                        .take(3)
+                    outfitStorage.getOutfits().filter { outfit ->
+                        keywords.any { keyword ->
+                            outfit.garmentDescription.contains(keyword, ignoreCase = true) ||
+                                    outfit.description.contains(keyword, ignoreCase = true)
+                        }
+                    }
+                }
+            } else {
+                outfitStorage.getOutfits()
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🔖 Mes outfits sauvegardés") },
+                title = {
+                    Text(
+                        if (garmentDescription != null)
+                            "🔖 Outfits générés à partir de ce vêtement"
+                        else
+                            "🔖 Mes outfits sauvegardés"
+                    )
+                },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
                         Text("← Retour")
@@ -37,10 +68,23 @@ fun SavedOutfitsScreen(onBack: () -> Unit) {
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Aucun outfit sauvegardé pour l'instant !",
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = if (garmentDescription != null)
+                            "Aucun outfit sauvegardé avec ce vêtement encore !"
+                        else
+                            "Aucun outfit sauvegardé pour l'instant !",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    if (garmentDescription != null) {
+                        Button(onClick = onCreateOutfit) {
+                            Text("✨ Créer un outfit avec ce vêtement")
+                        }
+                    }
+                }
             }
         } else {
             LazyColumn(
@@ -63,7 +107,7 @@ fun SavedOutfitsScreen(onBack: () -> Unit) {
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            if (outfit.garmentDescription.isNotEmpty()) {
+                            if (outfit.garmentDescription.isNotEmpty() && garmentDescription == null) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "👗 ${outfit.garmentDescription}",

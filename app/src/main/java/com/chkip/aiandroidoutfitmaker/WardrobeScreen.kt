@@ -20,7 +20,7 @@ import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WardrobeScreen(onBack: () -> Unit, onCreateOutfit: (String) -> Unit = {}) {
+fun WardrobeScreen(onBack: () -> Unit, onCreateOutfit: (String) -> Unit = {}, onOpenSavedOutfits: (String?) -> Unit = {}) {
     val context = LocalContext.current
     val wardrobeStorage = remember { WardrobeStorage(context) }
     var selectedItem by remember { mutableStateOf<ClothingItem?>(null) }
@@ -107,6 +107,22 @@ fun WardrobeScreen(onBack: () -> Unit, onCreateOutfit: (String) -> Unit = {}) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("✨ Générer un outfit")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            val desc = selectedItem!!.description
+                                .lines()
+                                .find { it.startsWith("DESCRIPTION:") }
+                                ?.removePrefix("DESCRIPTION:")
+                                ?.trim()
+                            android.util.Log.d("WARDROBE", "Opening saved outfits for: '$desc'")
+                            onOpenSavedOutfits(if (desc.isNullOrEmpty()) null else desc)
+                            showItemDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🔖 Voir les outfits sauvegardés")
                     }
                     Button(
                         onClick = {
