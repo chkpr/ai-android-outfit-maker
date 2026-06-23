@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
 
         // Initialise OpenCV
         OpenCVLoader.initLocal()
+        MobileSAMSegmentation.initialize(this)
         android.util.Log.d("OpenCV", "OpenCV initialized")
 
         setContent {

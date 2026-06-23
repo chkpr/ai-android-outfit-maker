@@ -269,7 +269,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit, preloaded
                                                 (sourceBitmap.height * scale).toInt(),
                                                 true
                                             )
-                                            generatedBitmap = GrabCutSegmentation.isolateGarment(
+                                            generatedBitmap = MobileSAMSegmentation.isolateGarment(
                                                 scaledBitmap,
                                                 offset.x,
                                                 offset.y,
