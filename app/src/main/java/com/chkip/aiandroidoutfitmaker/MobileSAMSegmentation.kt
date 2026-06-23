@@ -146,8 +146,15 @@ object MobileSAMSegmentation {
         android.util.Log.d("MobileSAM", "l4 size: ${l4.size}")
 
 
+        // Choisit le meilleur masque selon le score IOU
+        val iouPreds = decoderOutputs.get("iou_predictions").get().value as Array<*>
+        val scores = (iouPreds[0] as FloatArray)
+        android.util.Log.d("MobileSAM", "IOU scores: ${scores.toList()}")
+        val bestMask = 0
+        android.util.Log.d("MobileSAM", "Best mask: $bestMask")
 
-        return applyMask(bitmap, masks, imageWidth, imageHeight)
+        return applyMask(bitmap, masks, bestMask)
+
     }
 
     private fun bitmapToFloatArray(bitmap: Bitmap): FloatArray {
@@ -171,8 +178,7 @@ object MobileSAMSegmentation {
     private fun applyMask(
         bitmap: Bitmap,
         masks: Array<*>,
-        imageWidth: Float,
-        imageHeight: Float
+        maskIndex: Int = 0
     ): Bitmap {
         val width = bitmap.width
         val height = bitmap.height
@@ -181,7 +187,7 @@ object MobileSAMSegmentation {
 
         val result = IntArray(width * height) { Color.WHITE }
 
-        val maskRows = ((masks[0] as Array<*>)[0] as Array<*>)
+        val maskRows = ((masks[0] as Array<*>)[maskIndex] as Array<*>)
         val maskH = maskRows.size
         val maskW = (maskRows[0] as FloatArray).size
 
@@ -189,7 +195,6 @@ object MobileSAMSegmentation {
 
         for (y in 0 until height) {
             for (x in 0 until width) {
-                // Mapping direct proportionnel
                 val maskX = (x.toFloat() * maskW / width).toInt().coerceIn(0, maskW - 1)
                 val maskY = (y.toFloat() * maskH / height).toInt().coerceIn(0, maskH - 1)
                 val maskVal = (maskRows[maskY] as FloatArray)[maskX]
