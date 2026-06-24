@@ -14,17 +14,23 @@ object GrabCutSegmentation {
         imageWidth: Float,
         imageHeight: Float
     ): Bitmap {
-        val scaleX = bitmap.width.toFloat() / imageWidth
-        val scaleY = bitmap.height.toFloat() / imageHeight
-        val centerX = (touchX * scaleX).toInt()
-        val centerY = (touchY * scaleY).toInt()
+        val centerX = if (touchX == 0f) bitmap.width / 2
+        else (touchX * bitmap.width.toFloat() / imageWidth).toInt()
+        val centerY = if (touchY == 0f) bitmap.height / 2
+        else (touchY * bitmap.height.toFloat() / imageHeight).toInt()
+
 
         android.util.Log.d("GrabCut", "Center: $centerX, $centerY in ${bitmap.width}x${bitmap.height}")
+
+        android.util.Log.d("GrabCut", "Center: $centerX, $centerY in ${bitmap.width}x${bitmap.height}")
+        android.util.Log.d("GrabCut", "TouchX: $touchX, TouchY: $touchY, ImageWidth: $imageWidth, ImageHeight: $imageHeight")
 
         // Convertit en Mat OpenCV
         val src = Mat()
         Utils.bitmapToMat(bitmap, src)
         Imgproc.cvtColor(src, src, Imgproc.COLOR_RGBA2RGB)
+
+
 
         // Rectangle large couvrant toute l'image
         val rect = Rect(
@@ -51,21 +57,9 @@ object GrabCutSegmentation {
             }
         }
 
-        // Hint négatif : le bas de l'image est le fond
-        val bottomMargin = (bitmap.height * 0.15f).toInt()
-        for (y in bitmap.height - bottomMargin until bitmap.height) {
-            for (x in 0 until bitmap.width) {
-                mask.put(y, x, Imgproc.GC_BGD.toDouble())
-            }
-        }
 
-        // Hint négatif : le haut de l'image est le fond
-        val topMargin = (bitmap.height * 0.08f).toInt()
-        for (y in 0 until topMargin) {
-            for (x in 0 until bitmap.width) {
-                mask.put(y, x, Imgproc.GC_BGD.toDouble())
-            }
-        }
+
+
 
         // Relance GrabCut avec le hint
         Imgproc.grabCut(src, mask, rect, bgModel, fgModel, 3, Imgproc.GC_INIT_WITH_MASK)

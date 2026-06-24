@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/src/main/assets/*.data
+app/src/main/assets/*.onnxapp/src/main/assets/*.data
+app/src/main/assets/*.onnx

@@ -20,8 +20,9 @@ class MainActivity : ComponentActivity() {
 
         // Initialise OpenCV
         OpenCVLoader.initLocal()
-        MobileSAMSegmentation.initialize(this)
+        OpenCVLoader.initLocal()
         android.util.Log.d("OpenCV", "OpenCV initialized")
+        GarmentSegmentation.initialize(this)
 
         setContent {
             AIAndroidOutfitMakerTheme {

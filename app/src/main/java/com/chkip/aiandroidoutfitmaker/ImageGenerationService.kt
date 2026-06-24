@@ -18,6 +18,9 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.*
+import org.opencv.android.Utils
+import org.opencv.core.Core
+import org.opencv.core.Mat
 
 class ImageGenerationService {
     private val replicateKey = BuildConfig.REPLICATE_API_KEY
@@ -104,36 +107,28 @@ class ImageGenerationService {
         imageWidth: Float = 0f,
         imageHeight: Float = 0f
     ): Bitmap? {
-        val imageBytes = context.contentResolver.openInputStream(imageUri)?.readBytes()
-            ?: return null
+        android.util.Log.d("ImageGen", "Step 1: Load image")
+        val sourceBitmap = BitmapUtils.loadCorrectlyOrientedBitmap(context, imageUri) ?: return null
 
-        android.util.Log.d("ImageGen", "Step 1: Remove background")
-        val step1 = callRemoveBg(imageBytes, "auto") ?: return null
+        android.util.Log.d("ImageGen", "generateCleanImage called!")
 
-        android.util.Log.d("ImageGen", "Step 2: Replace white with green")
-        val greenBg = replaceWhiteWithGreen(step1)
-
-        android.util.Log.d("ImageGen", "Step 3: GrabCut on green background")
+        android.util.Log.d("ImageGen", "Step 2: GarmentSegmentation")
         val maxSize = 800
-        val scale = minOf(maxSize.toFloat() / greenBg.width, maxSize.toFloat() / greenBg.height)
+        val scale = minOf(maxSize.toFloat() / sourceBitmap.width, maxSize.toFloat() / sourceBitmap.height)
         val scaledBitmap = Bitmap.createScaledBitmap(
-            greenBg,
-            (greenBg.width * scale).toInt(),
-            (greenBg.height * scale).toInt(),
+            sourceBitmap,
+            (sourceBitmap.width * scale).toInt(),
+            (sourceBitmap.height * scale).toInt(),
             true
         )
 
-        val grabCutResult = GrabCutSegmentation.isolateGarment(
-            scaledBitmap,
-            touchX,
-            touchY,
-            imageWidth,
-            imageHeight
-        )
-
-        android.util.Log.d("ImageGen", "Step 4: Replace remaining green with white")
-        return replaceGreenWithWhite(grabCutResult)
+        return GarmentSegmentation.isolateGarment(scaledBitmap)
     }
+
+
+
+
+
 
     fun paintSkinGreen(bitmap: Bitmap): Bitmap {
         val width = bitmap.width
@@ -541,5 +536,15 @@ class ImageGenerationService {
         val resultBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         resultBitmap.setPixels(result, 0, width, 0, 0, width, height)
         return resultBitmap
+    }
+
+    fun increaseContrast(bitmap: Bitmap): Bitmap {
+        val src = Mat()
+        Utils.bitmapToMat(bitmap, src)
+        val enhanced = Mat()
+        Core.convertScaleAbs(src, enhanced, 2.0, 0.0)
+        val result = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        Utils.matToBitmap(enhanced, result)
+        return result
     }
 }

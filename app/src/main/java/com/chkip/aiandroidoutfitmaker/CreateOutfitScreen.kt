@@ -269,7 +269,7 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit, preloaded
                                                 (sourceBitmap.height * scale).toInt(),
                                                 true
                                             )
-                                            generatedBitmap = MobileSAMSegmentation.isolateGarment(
+                                            generatedBitmap = GrabCutSegmentation.isolateGarment(
                                                 scaledBitmap,
                                                 offset.x,
                                                 offset.y,
@@ -419,9 +419,9 @@ fun CreateOutfitScreen(onBack: () -> Unit, onOpenWardrobe: () -> Unit, preloaded
                                 ?.removePrefix("A_MOTIF:")
                                 ?.trim() == "true"
 
-                            if (description != null && preloadedImagePath == null) {
+                            if (preloadedImagePath == null) {
                                 val isolatedBitmap = imageGenService.generateCleanImage(
-                                    context, photoUri!!, description,
+                                    context, photoUri!!, description ?: "",
                                     lastTouchX, lastTouchY,
                                     imageSize.width, imageSize.height
                                 )
